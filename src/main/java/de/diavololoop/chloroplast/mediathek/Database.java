@@ -81,7 +81,10 @@ public class Database {
             connection = DriverManager.getConnection("jdbc:sqlite:" + database.getAbsolutePath());
             statement = connection.createStatement();
 
-            initDatabase();
+            if (!database.isFile()) {
+                initDatabase();
+            }
+
         } catch (SQLException e) {
             e.printStackTrace();
             System.exit(-1);
