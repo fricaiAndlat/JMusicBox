@@ -177,7 +177,7 @@ public class Database {
     }
 
     public boolean addAlbum(String interpret) {
-
+        return false;
     }
 
     public class Interpret {

@@ -320,7 +320,7 @@ public class Phonetik {
 
     private final static String[] E_NUMBER = {null, "one", "two", "three", "four", "five", "six", "seven", "eight",
                 "nine", "ten", "eleven", "twelve"};
-    private final static String[] E_NUMBER_TEN = {"", "ten", "twenty", "thirty", "fourty", "fifty", "sixty", "seventy",
+    private final static String[] E_NUMBER_TEN = {"", "ten", "twenty", "thirty", "forty", "fifty", "sixty", "seventy",
                 "eighty", "ninety"};
 
     private static String encodeNumber(int number) {
@@ -344,10 +344,10 @@ public class Phonetik {
         }
 
         if (number >= 1000) {
-            int thousend = (number / 1000) % 1000;
+            int thousand = (number / 1000) % 1000;
 
-            if (thousend != 0) {
-                result += encodeNumberHundret(thousend) + "thousend";
+            if (thousand != 0) {
+                result += encodeNumberHundret(thousand) + "thousand";
             }
         }
 
@@ -359,10 +359,10 @@ public class Phonetik {
     private static String encodeNumberHundret(int number) {
 
         String result = "";
-        int hundret = number / 100;
+        int hundred = number / 100;
 
-        if (hundret != 0) {
-            result += E_NUMBER[hundret] + "hundret";
+        if (hundred != 0) {
+            result += E_NUMBER[hundred] + "hundred";
         }
 
         result += encodeNumberTen(number % 100);
@@ -440,10 +440,10 @@ public class Phonetik {
         }
 
         if (number >= 1000) {
-            int thousend = (number / 1000) % 1000;
+            int thousand = (number / 1000) % 1000;
 
-            if (thousend != 0) {
-                result += encodeNumberGermanHundret(thousend) + "tausend";
+            if (thousand != 0) {
+                result += encodeNumberGermanHundret(thousand) + "tausend";
             }
         }
 
