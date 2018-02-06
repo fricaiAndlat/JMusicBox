@@ -49,7 +49,14 @@ public class Database {
 
 
     public static void main(String[] args) {
-
+        Database data = new Database();
+        try {
+            data.initDatabase();
+            data.addInterpret("chloroplast");
+            data.printDatabase(System.out);
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
     }
 
     public static Database get() {
