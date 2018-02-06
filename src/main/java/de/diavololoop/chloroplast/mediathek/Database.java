@@ -49,14 +49,7 @@ public class Database {
 
 
     public static void main(String[] args) {
-        Database data = new Database();
-        try {
-            data.initDatabase();
-            data.addInterpret("chloroplast");
-            data.printDatabase(System.out);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+
     }
 
     public static Database get() {
@@ -211,6 +204,15 @@ public class Database {
         }
     }
 
+    public Optional<Interpret> getInpterpretByName(String name){
+        try {
+            ResultSet result = statement.executeQuery("SELECT name, id FROM interpret WHERE name=('" + name + "');");
+            return Optional.of(new Interpret(result.getString(1), result.getInt(2)));
+        } catch (SQLException e) {
+            return Optional.empty();
+        }
+    }
+
     public void printDatabase(PrintStream out) {
 
         try {
@@ -220,6 +222,22 @@ public class Database {
             out.println("----id----|---name---");
             while (result.next()) {
                 out.printf("%10d|%10s\r\n", result.getInt(1), result.getString(2));
+            }
+            out.println();
+
+            result = statement.executeQuery("SELECT name, interpret FROM album");
+            out.println("album:");
+            out.println("-------------------name-----------------|-interpret-");
+            while (result.next()) {
+                out.printf("%40s|%10d\r\n", result.getString(1), result.getInt(2));
+            }
+            out.println();
+
+            result = statement.executeQuery("SELECT codes, type, id FROM search");
+            out.println("search:");
+            out.println("------------------codes-----------------|---type---|----id----");
+            while (result.next()) {
+                out.printf("%40s|%10d|%10d\r\n", result.getString(1), result.getInt(2), result.getInt(3));
             }
             out.println();
 
