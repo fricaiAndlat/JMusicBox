@@ -1,37 +1,66 @@
 package de.diavololoop.chloroplast.mediathek;
 
+import java.io.File;
+
 import java.util.LinkedList;
 import java.util.List;
-import java.util.Random;
 
 public class Phonetik {
 
     public static void main(String[] args) {
 
-        Random rand = new Random();
+        Database data = Database.get();
 
-        for (int i = 0; i < 100; ++i) {
-            int nr = rand.nextInt(1000000000);
-            System.out.println(nr + ": " + encodeNumberGerman(nr));
-            System.out.println(nr + ": " + encodeNumber(nr));
+        data.searchFor("", false, false, false);
+        data.searchFor("", false, false, true);
+        data.searchFor("", false, true, false);
+        data.searchFor("", false, true, true);
+        data.searchFor("", true, false, false);
+        data.searchFor("", true, false, true);
+        data.searchFor("", true, true, false);
+        data.searchFor("", true, true, true);
+
+    }
+
+    public static List<String> makeSearchKeys(String str) {
+
+        List<String> result = new LinkedList<String>();
+
+        List<String> numbers = Phonetik.extractNumbersInString(str);
+
+        for (String key: numbers) {
+            result.add(soundex(key));
+            result.add(soundexGerman(key));
         }
 
 
-        List<String> str = extractNumbersInString("99 Luftballons in 1 Horizont 645");
+        str = str.toLowerCase();
+        str = str.replaceAll("ä", "a");
+        str = str.replaceAll("ö", "o");
+        str = str.replaceAll("ü", "u");
+        str = str.replaceAll("ß", "s");
+        str = str.replaceAll("[^a-z]", " ");
+        str = str.replaceAll(" +", " ");
+        str = str.trim();
 
-        for (String s: str) {
-            System.out.println(s);
+        System.out.println("string: "+str);
+
+        String[] elements = str.split(" ");
+        for (String key: elements) {
+            result.add(soundex(key));
+            result.add(soundexGerman(key));
         }
 
-        System.out.println(soundexGerman("wikipedia"));
-        System.out.println(soundexGerman("Müller-Lüdenscheidt"));
+        return result;
+
     }
 
     public static String soundex(String str) {
         str = str.toLowerCase();
         str = str.replaceAll("ä", "a");
         str = str.replaceAll("ö", "o");
-        str = str.replaceAll("ü", "ü");
+        str = str.replaceAll("ü", "u");
+        str = str.replaceAll("ß", "s");
         str = str.replaceAll("[^a-z]", "");
 
         StringBuilder builder = new StringBuilder();
@@ -42,7 +71,7 @@ public class Phonetik {
 
         builder.append(str.charAt(0));
 
-        for (int i = 1; i < str.length(); ++i) {
+        for (int i = 1; i < str.length() && builder.length() < 4; ++i) {
 
             char c = str.charAt(i);
             char last = i == 0 ? '#': builder.charAt(builder.length() - 1);
@@ -61,16 +90,51 @@ public class Phonetik {
                 case 'j':
                 case 'k':
                 case 'q':
-
+                case 's':
+                case 'x':
+                case 'z':
+                    if (last != '2') {
+                        builder.append('2');
+                    }
+                    break;
+                case 'd':
+                case 't':
+                    if (last != '3') {
+                        builder.append('3');
+                    }
+                    break;
+                case 'l':
+                    if (last != '4') {
+                        builder.append('4');
+                    }
+                    break;
+                case 'm':
+                case 'n':
+                    if (last != '5') {
+                        builder.append('5');
+                    }
+                    break;
+                case 'r':
+                    if (last != '6') {
+                        builder.append('6');
+                    }
+                    break;
+                default: {}
             }
         }
+
+        for (int i = builder.length(); i < 4; ++i) {
+            builder.append('0');
+        }
+
+        return builder.toString();
     }
 
     public static String soundexGerman(String str) {
         str = str.toLowerCase();
         str = str.replaceAll("ä", "a");
         str = str.replaceAll("ö", "o");
-        str = str.replaceAll("ü", "ü");
+        str = str.replaceAll("ü", "u");
         str = str.replaceAll("[^a-z]", "");
 
 
@@ -81,7 +145,7 @@ public class Phonetik {
             char c = str.charAt(i);
             char next = i+1 == str.length() ? '#' : str.charAt(i + 1);
             char previous = i == 0 ? '#' : str.charAt(i - 1);
-            char last = i == 0 ? '#': builder.charAt(builder.length() - 1);
+            char last = builder.length() == 0 ? '#' : builder.charAt(builder.length() - 1);
 
             switch(c) {
                 case 'a':

@@ -1,14 +1,46 @@
 package de.diavololoop.chloroplast.mediathek;
 
+import java.io.File;
+import java.sql.Connection;
+import java.sql.DriverManager;
+import java.sql.SQLException;
+import java.sql.Statement;
+import java.util.List;
+
+/**
+ *
+ * DATABASE structure:
+ *
+ * Interpret:
+ *      id: Integer
+ *      name: String
+ *
+ * Album:
+ *      id: Integer
+ *      name: String
+ *      interpret: int -> interpret.id
+ *
+ * Titel:
+ *      id: Integer
+ *      name: String
+ *      album: int -> album.id
+ *
+ * search:
+ *      id: int -> interpret.id | album.id | titel.id
+ *      codes: String
+ *      type: int
+ *
+ *
+ */
 public class Database {
 
-    private final static String SEARCH_TITEL = "";
-    private final static String SEARCH_ALBUM = "";
-    private final static String SEARCH_INTERPRET = "";
-    private final static String SEARCH_TITEL_ALBUM = "";
-    private final static String SEARCH_TITEL_INTERPRET = "";
-    private final static String SERACH_ALBUM_INTERPRET = "";
-    private final static String SEARCH_TITEL_ALBUM_INTERPRET = "";
+    private final static String SEARCH_TITEL = "type=0";
+    private final static String SEARCH_ALBUM = "type=1";
+    private final static String SEARCH_INTERPRET = "type=2";
+    private final static String SEARCH_TITEL_ALBUM = "type<2";
+    private final static String SEARCH_TITEL_INTERPRET = "type<>1";
+    private final static String SERACH_ALBUM_INTERPRET = "type>0";
+    private final static String SEARCH_TITEL_ALBUM_INTERPRET = "1=1";
 
     private final static String[] SEARCH_STRINGS = {SEARCH_TITEL_ALBUM_INTERPRET, SEARCH_TITEL, SEARCH_ALBUM,
             SEARCH_TITEL_ALBUM, SEARCH_INTERPRET, SEARCH_TITEL_INTERPRET, SERACH_ALBUM_INTERPRET,
@@ -21,16 +53,41 @@ public class Database {
 
     }
 
-    public Database get() {
+    public static Database get() {
 
         if (database == null) {
             database = new Database();
         }
 
+
         return database;
     }
 
+
+    private Connection connection;
+    private Statement statement;
+
+
     private Database () {
+
+        File databaseDir = new File("database");
+        if (!databaseDir.isDirectory()) {
+            databaseDir.mkdirs();
+        }
+
+        File database = new File("database/database.db");
+
+        try{
+            connection = DriverManager.getConnection("jdbc:sqlite:" + database.getAbsolutePath());
+            statement = connection.createStatement();
+
+            initDatabase();
+        } catch (SQLException e) {
+            e.printStackTrace();
+            System.exit(-1);
+        }
+
+
 
     }
 
@@ -42,6 +99,122 @@ public class Database {
         searchType |= interpret ? 4 : 0;
 
         String searchString = SEARCH_STRINGS[searchType];
+
+        System.out.println(searchString);
+    }
+
+    /**
+     *
+     * DATABASE structure:
+     *
+     * titel=0, album=1, interpret=2
+     *
+     * Interpret:
+     *      id: Integer
+     *      name: String
+     *
+     * Album:
+     *      id: Integer
+     *      name: String
+     *      interpret: int -> interpret.id
+     *
+     * Titel:
+     *      id: Integer
+     *      name: String
+     *      album: int -> album.id
+     *
+     * search:
+     *      id: int -> interpret.id | album.id | titel.id
+     *      codes: String
+     *      type: int
+     *
+     *
+     */
+    private void initDatabase() throws SQLException {
+
+        statement.executeUpdate("CREATE TABLE interpret (" +
+                "id   INTEGER      PRIMARY KEY, " +
+                "name VARCHAR(255) UNIQUE);");
+
+        statement.executeUpdate("CREATE TABLE album (" +
+                "id         INTEGER      PRIMARY KEY, " +
+                "name       VARCHAR(255) NOT NULL," +
+                "interpret  INTEGER      NOT NULL," +
+                "FOREIGN KEY(interpret) REFERENCES interpret(id));");
+
+        statement.executeUpdate("CREATE TABLE titel (" +
+                "id         INTEGER      PRIMARY KEY, " +
+                "name       VARCHAR(255) NOT NULL," +
+                "album      INTEGER      NOT NULL," +
+                "FOREIGN KEY(album) REFERENCES album(id));");
+
+        statement.executeUpdate("CREATE TABLE search (" +
+                "id         INTEGER      INDEX, " +
+                "codes      VARCHAR(255) INDEX," +
+                "type       INTEGER      NOT NULL);");
+
+    }
+
+    public boolean addInterpret(String interpret){
+
+        try {
+
+            statement.executeUpdate("INSERT INTO interpret (name) VALUES ('" + interpret + "');");
+            statement.executeUpdate("INSERT INTO search (codes, type) VALUES ('" + interpret + "', 2)");
+
+            List<String> keys = Phonetik.makeSearchKeys(interpret);
+
+            for (String key: keys) {
+                statement.executeUpdate("INSERT INTO search (codes, type) VALUES ('" + key + "', 2)");
+            }
+
+            return true;
+
+        } catch (SQLException e) {
+            return false;
+        }
+
+    }
+
+    public boolean addAlbum(String interpret) {
+
+    }
+
+    public class Interpret {
+
+        public final String name;
+        public final int id;
+
+        public Interpret(String name) {
+            this.name = name;
+            id = -1;
+        }
+
+        public Interpret(String name, int id) {
+            this.name = name;
+            this.id = id;
+        }
+
+    }
+
+    public class Album {
+
+        public final String name;
+        public final int id;
+        public final Interpret interpret;
+
+        public Album(String name, Interpret interpret) {
+            this.name = name;
+            this.interpret = interpret;
+            id = -1;
+        }
+
+        public Album(String name, Interpret interpret, int id) {
+            this.name = name;
+            this.interpret = interpret;
+            this.id = id;
+        }
+
     }
 
 }
