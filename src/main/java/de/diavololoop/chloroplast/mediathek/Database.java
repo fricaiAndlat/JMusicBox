@@ -6,6 +6,7 @@ import java.sql.DriverManager;
 import java.sql.SQLException;
 import java.sql.Statement;
 import java.util.List;
+import java.util.Optional;
 
 /**
  *
@@ -158,29 +159,49 @@ public class Database {
 
     }
 
-    public boolean addInterpret(String interpret){
+    public Optional<Interpret> addInterpret(String interpret){
 
         try {
 
-            statement.executeUpdate("INSERT INTO interpret (name) VALUES ('" + interpret + "');");
-            statement.executeUpdate("INSERT INTO search (codes, type) VALUES ('" + interpret + "', 2)");
+            int insertID = statement.executeUpdate("INSERT INTO interpret (name) VALUES ('" + interpret + "');");
+            statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + interpret + "', 2, "+insertID+")");
 
             List<String> keys = Phonetik.makeSearchKeys(interpret);
 
             for (String key: keys) {
-                statement.executeUpdate("INSERT INTO search (codes, type) VALUES ('" + key + "', 2)");
+                statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + key + "', 2, "+insertID+")");
             }
 
-            return true;
+            return Optional.of(new Interpret(interpret, insertID));
 
         } catch (SQLException e) {
-            return false;
+            return Optional.empty();
         }
 
     }
 
-    public boolean addAlbum(String interpret) {
-        return false;
+    public Optional<Album> addAlbum(String album, Interpret interpret) {
+
+        if (interpret.id == -1) {
+            //TODO retrieve or add interpret if not known
+        }
+
+        try {
+
+            int insertID = statement.executeUpdate("INSERT INTO album (name, interpret) VALUES ('" + album + "', " + interpret.id + ");");
+            statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + album + "', 1, "+insertID+")");
+
+            List<String> keys = Phonetik.makeSearchKeys(album);
+
+            for (String key: keys) {
+                statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + key + "', 1, "+insertID+")");
+            }
+
+            return Optional.of(new Album(album, interpret, insertID));
+
+        } catch (SQLException e) {
+            return Optional.empty();
+        }
     }
 
     public class Interpret {
