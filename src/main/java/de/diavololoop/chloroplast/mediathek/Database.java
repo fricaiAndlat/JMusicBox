@@ -1,10 +1,8 @@
 package de.diavololoop.chloroplast.mediathek;
 
 import java.io.File;
-import java.sql.Connection;
-import java.sql.DriverManager;
-import java.sql.SQLException;
-import java.sql.Statement;
+import java.io.PrintStream;
+import java.sql.*;
 import java.util.List;
 import java.util.Optional;
 
@@ -79,10 +77,13 @@ public class Database {
         File database = new File("database/database.db");
 
         try{
+
+            boolean isEmpty = !database.isFile();
+
             connection = DriverManager.getConnection("jdbc:sqlite:" + database.getAbsolutePath());
             statement = connection.createStatement();
 
-            if (!database.isFile()) {
+            if (isEmpty) {
                 initDatabase();
             }
 
@@ -91,8 +92,7 @@ public class Database {
             System.exit(-1);
         }
 
-
-
+        printDatabase(System.out);
     }
 
     public void searchFor(String search, boolean title, boolean album, boolean interpret) {
@@ -153,10 +153,10 @@ public class Database {
                 "FOREIGN KEY(album) REFERENCES album(id));");
 
         statement.executeUpdate("CREATE TABLE search (" +
-                "id         INTEGER      INDEX, " +
-                "codes      VARCHAR(255) INDEX," +
-                "type       INTEGER      NOT NULL);");
-
+                "id         INTEGER      NOT NULL," +
+                "codes      VARCHAR(255) NOT NULL," +
+                "type       INTEGER      NOT NULL);" +
+                "CREATE INDEX ind_search_codes ON search(codes);");
     }
 
     public Optional<Interpret> addInterpret(String interpret){
@@ -202,6 +202,24 @@ public class Database {
         } catch (SQLException e) {
             return Optional.empty();
         }
+    }
+
+    public void printDatabase(PrintStream out) {
+
+        try {
+
+            ResultSet result = statement.executeQuery("SELECT id, name FROM interpret");
+            out.println("interpret:");
+            out.println("----id----|---name---");
+            while (result.next()) {
+                out.printf("%10d|%10s\r\n", result.getInt(1), result.getString(2));
+            }
+            out.println();
+
+        } catch (SQLException e) {
+            e.printStackTrace(out);
+        }
+
     }
 
     public class Interpret {
