@@ -241,4 +241,24 @@ public class Database {
 
     }
 
+    public class Title {
+
+        public final String name;
+        public final int id;
+        public final Album album;
+
+        public Title(String name, Album album) {
+            this.name = name;
+            this.album = album;
+            id = -1;
+        }
+
+        public Title(String name, Album album, int id) {
+            this.name = name;
+            this.album = album;
+            this.id = id;
+        }
+
+    }
+
 }
