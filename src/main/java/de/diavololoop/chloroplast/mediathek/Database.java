@@ -34,17 +34,17 @@ import java.util.List;
  */
 public class Database {
 
-    private final static String SEARCH_TITEL = "type=0";
+    private final static String SEARCH_TITLE = "type=0";
     private final static String SEARCH_ALBUM = "type=1";
     private final static String SEARCH_INTERPRET = "type=2";
-    private final static String SEARCH_TITEL_ALBUM = "type<2";
-    private final static String SEARCH_TITEL_INTERPRET = "type<>1";
+    private final static String SEARCH_TITLE_ALBUM = "type<2";
+    private final static String SEARCH_TITLE_INTERPRET = "type<>1";
     private final static String SERACH_ALBUM_INTERPRET = "type>0";
-    private final static String SEARCH_TITEL_ALBUM_INTERPRET = "1=1";
+    private final static String SEARCH_TITLE_ALBUM_INTERPRET = "1=1";
 
-    private final static String[] SEARCH_STRINGS = {SEARCH_TITEL_ALBUM_INTERPRET, SEARCH_TITEL, SEARCH_ALBUM,
-            SEARCH_TITEL_ALBUM, SEARCH_INTERPRET, SEARCH_TITEL_INTERPRET, SERACH_ALBUM_INTERPRET,
-            SEARCH_TITEL_ALBUM_INTERPRET};
+    private final static String[] SEARCH_STRINGS = {SEARCH_TITLE_ALBUM_INTERPRET, SEARCH_TITLE, SEARCH_ALBUM,
+            SEARCH_TITLE_ALBUM, SEARCH_INTERPRET, SEARCH_TITLE_INTERPRET, SERACH_ALBUM_INTERPRET,
+            SEARCH_TITLE_ALBUM_INTERPRET};
 
     private static Database database;
 
@@ -91,10 +91,10 @@ public class Database {
 
     }
 
-    public void searchFor(String search, boolean titel, boolean album, boolean interpret) {
+    public void searchFor(String search, boolean title, boolean album, boolean interpret) {
 
         int searchType = 0;
-        searchType |= titel     ? 1 : 0;
+        searchType |= title     ? 1 : 0;
         searchType |= album     ? 2 : 0;
         searchType |= interpret ? 4 : 0;
 
@@ -107,7 +107,7 @@ public class Database {
      *
      * DATABASE structure:
      *
-     * titel=0, album=1, interpret=2
+     * title=0, album=1, interpret=2
      *
      * Interpret:
      *      id: Integer
@@ -142,7 +142,7 @@ public class Database {
                 "interpret  INTEGER      NOT NULL," +
                 "FOREIGN KEY(interpret) REFERENCES interpret(id));");
 
-        statement.executeUpdate("CREATE TABLE titel (" +
+        statement.executeUpdate("CREATE TABLE title (" +
                 "id         INTEGER      PRIMARY KEY, " +
                 "name       VARCHAR(255) NOT NULL," +
                 "album      INTEGER      NOT NULL," +
