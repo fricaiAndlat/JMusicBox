@@ -50,14 +50,7 @@ public class Database {
 
 
     public static void main(String[] args) {
-        Database data = new Database();
-        try {
-            data.initDatabase();
-            data.addInterpret("chloroplast");
-            data.printDatabase(System.out);
-        } catch (SQLException e) {
-            e.printStackTrace();
-        }
+
     }
 
     public static Database get() {
@@ -400,6 +393,15 @@ public class Database {
 
         } catch (SQLException e) {
             e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public Optional<Interpret> getInpterpretByName(String name){
+        try {
+            ResultSet result = statement.executeQuery("SELECT name, id FROM interpret WHERE name=('" + name + "');");
+            return Optional.of(new Interpret(result.getString(1), result.getInt(2)));
+        } catch (SQLException e) {
             return Optional.empty();
         }
     }
