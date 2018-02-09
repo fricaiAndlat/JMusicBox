@@ -4,6 +4,7 @@ import java.io.File;
 
 import java.util.LinkedList;
 import java.util.List;
+import java.util.Optional;
 
 public class Phonetik {
 
@@ -11,14 +12,49 @@ public class Phonetik {
 
         Database data = Database.get();
 
-        data.searchFor("", false, false, false);
-        data.searchFor("", false, false, true);
-        data.searchFor("", false, true, false);
-        data.searchFor("", false, true, true);
-        data.searchFor("", true, false, false);
-        data.searchFor("", true, false, true);
-        data.searchFor("", true, true, false);
-        data.searchFor("", true, true, true);
+        System.out.println("add interpret");
+        Optional<Database.Interpret> interpret = data.addInterpret("Linkin Park");
+
+        System.out.println("add alb");
+        data.addAlbum("Meteora", interpret.get());
+        System.out.println("add alb");
+        data.addAlbum("Burn it Down", interpret.get());
+
+        System.out.println("add interpret");
+        interpret = data.addInterpret("Fiddler's Green");
+        System.out.println("add alb");
+        data.addAlbum("Devil’s Dozen", interpret.get());
+        System.out.println("add alb");
+        data.addAlbum("Wall of Folk", interpret.get());
+        System.out.println("add alb");
+        Optional<Database.Album> album = data.addAlbum("Folk’s Not Dead", interpret.get());
+
+        data.addTitle("Titel1 6344", album.get());
+        data.addTitle("Titel2 asdasd", album.get());
+        data.addTitle("Titel3 SDasdAD", album.get());
+
+        data.printDatabase(System.out);
+
+
+        List<Database.Interpret> listInterpret = new LinkedList<Database.Interpret>();
+        List<Database.Album>     listAlbum     = new LinkedList<Database.Album>();
+        List<Database.Title>     listTitle     = new LinkedList<Database.Title>();
+
+        data.searchFast("_", true, true, true, listInterpret, listAlbum, listTitle);
+
+        listInterpret.forEach(i -> System.out.printf("interpret: %20s\r\n", i.name));
+        listAlbum.forEach(a -> System.out.printf("album: %20s, %20s\r\n", a.name, a.interpret.name));
+        listTitle.forEach(t -> System.out.printf("title: %20s, %20s, %20s\r\n", t.name, t.album.name, t.album.interpret.name));
+
+        listInterpret.clear();
+        listAlbum.clear();
+        listTitle.clear();
+
+        data.search("ddlers green", true, true, true, listInterpret, listAlbum, listTitle);
+
+        listInterpret.forEach(i -> System.out.printf("interpret: %20s\r\n", i.name));
+        listAlbum.forEach(a -> System.out.printf("album: %20s, %20s\r\n", a.name, a.interpret.name));
+        listTitle.forEach(t -> System.out.printf("title: %20s, %20s, %20s\r\n", t.name, t.album.name, t.album.interpret.name));
 
     }
 
@@ -42,8 +78,6 @@ public class Phonetik {
         str = str.replaceAll("[^a-z]", " ");
         str = str.replaceAll(" +", " ");
         str = str.trim();
-
-        System.out.println("string: "+str);
 
         String[] elements = str.split(" ");
         for (String key: elements) {
@@ -139,6 +173,7 @@ public class Phonetik {
 
 
         StringBuilder builder = new StringBuilder();
+        builder.append('-');
 
         for (int i = 0; i < str.length(); ++i) {
 

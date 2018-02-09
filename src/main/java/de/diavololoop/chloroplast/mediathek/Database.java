@@ -3,6 +3,7 @@ package de.diavololoop.chloroplast.mediathek;
 import java.io.File;
 import java.io.PrintStream;
 import java.sql.*;
+import java.util.Arrays;
 import java.util.List;
 import java.util.Optional;
 
@@ -73,6 +74,14 @@ public class Database {
     private Connection connection;
     private Statement statement;
 
+    private PreparedStatement stmtInterpretAdd;
+    private PreparedStatement stmtAlbumAdd;
+    private PreparedStatement stmtTitleAdd;
+    private PreparedStatement stmtSearchAdd;
+
+    private PreparedStatement stmtSearchInterpretFast;
+    private PreparedStatement stmtSearchAlbumFast;
+    private PreparedStatement stmtSearchTitleFast;
 
     private Database () {
 
@@ -82,6 +91,8 @@ public class Database {
         }
 
         File database = new File("database/database.db");
+
+        database.delete();
 
         try{
 
@@ -94,6 +105,29 @@ public class Database {
                 initDatabase();
             }
 
+            stmtInterpretAdd = connection.prepareStatement("INSERT INTO interpret (name)            VALUES (?);",    new String[] {"id"});
+            stmtAlbumAdd     = connection.prepareStatement("INSERT INTO album     (name, interpret) VALUES (?, ?);", new String[] {"id"});
+            stmtTitleAdd     = connection.prepareStatement("INSERT INTO title     (name, album)     VALUES (?, ?);", new String[] {"id"});
+            stmtSearchAdd    = connection.prepareStatement("INSERT INTO search    (codes, type, id) VALUES (?, ?, ?);");
+
+            stmtSearchInterpretFast = connection.prepareStatement("SELECT i.id, i.name FROM search s INNER JOIN interpret i ON i.id = s.id WHERE type = 2 AND codes LIKE ? GROUP BY i.id, i.name");
+            stmtSearchAlbumFast     = connection.prepareStatement("SELECT a.id, a.name, i.id, i.name " +
+                    "FROM search s " +
+                    "INNER JOIN album a     ON s.id = a.id " +
+                    "INNER JOIN interpret i ON i.id = a.interpret " +
+                    "WHERE type = 1 AND codes LIKE ? " +
+                    "GROUP BY a.id, a.name, i.id, i.name");
+
+            stmtSearchTitleFast = connection.prepareStatement("SELECT t.name, t.id, a.name, a.id, i.name, i.id " +
+                    "FROM search s " +
+                    "INNER JOIN title t     ON s.id = t.id " +
+                    "INNER JOIN album a     ON a.id = t.album " +
+                    "INNER JOIN interpret i ON i.id = a.interpret " +
+                    "WHERE type = 0 AND codes LIKE ? " +
+                    "GROUP BY t.name, t.id, a.name, a.id, i.name, i.id");
+
+            connection.setAutoCommit(false);
+
         } catch (SQLException e) {
             e.printStackTrace();
             System.exit(-1);
@@ -102,23 +136,9 @@ public class Database {
         printDatabase(System.out);
     }
 
-    public void searchFor(String search, boolean title, boolean album, boolean interpret) {
-
-        int searchType = 0;
-        searchType |= title     ? 1 : 0;
-        searchType |= album     ? 2 : 0;
-        searchType |= interpret ? 4 : 0;
-
-        String searchString = SEARCH_STRINGS[searchType];
-
-        System.out.println(searchString);
-    }
-
     /**
      *
      * DATABASE structure:
-     *
-     * title=0, album=1, interpret=2
      *
      * Interpret:
      *      id: Integer
@@ -141,6 +161,109 @@ public class Database {
      *
      *
      */
+    public void searchFast(String search, boolean title, boolean album, boolean interpret, List<Interpret> resInterpret, List<Album> resAlbum, List<Title> resTitle) {
+
+        try {
+            if (interpret) {
+                stmtSearchInterpretFast.setString(1, "%" + search + "%");
+                ResultSet result = stmtSearchInterpretFast.executeQuery();
+
+                while (result.next()) {
+                    resInterpret.add(new Interpret(result.getString(2), result.getInt(1)));
+                }
+            }
+
+            if (album) {
+                stmtSearchAlbumFast.setString(1, "%" + search + "%");
+                ResultSet result = stmtSearchAlbumFast.executeQuery();
+
+                while (result.next()) {
+                    resAlbum.add(new Album(result.getString(2), new Interpret(result.getString(4), result.getInt(3)), result.getInt(1)));
+                }
+            }
+
+            if (title) {
+                stmtSearchTitleFast.setString(1, "%" + search + "%");
+
+                ResultSet result = stmtSearchTitleFast.executeQuery();
+
+                while (result.next()) {
+                    Interpret i = new Interpret(result.getString(5), result.getInt(6));
+                    Album a = new Album(result.getString(3), i, result.getInt(4));
+                    Title t = new Title(result.getString(1), a, result.getInt(2));
+                    resTitle.add(t);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+    }
+
+    public void search(String search, boolean title, boolean album, boolean interpret, List<Interpret> resInterpret, List<Album> resAlbum, List<Title> resTitle) {
+
+        try {
+
+            if (interpret) {
+
+                StringBuilder query = new StringBuilder();
+
+                query.append(
+                        "SELECT i.id, i.name, k.keyword, s.codes " +
+                        "FROM search s " +
+                        "INNER JOIN ( ");
+
+                List<String> keys = Phonetik.makeSearchKeys(search);
+                keys.forEach(k -> query.append(String.format("SELECT '%%%s%%' AS keyword UNION ALL ", k)));
+                Arrays.stream(search.split(" ")).forEach(k -> query.append(String.format("SELECT '%%%s%%' AS keyword UNION ALL ", k)));
+
+                query.append(String.format("SELECT '%%%s%%' AS keyword", search.toLowerCase().replaceAll("'", "''")));
+
+                query.append(
+                        ") k ON s.codes LIKE k.keyword " +
+                        "INNER JOIN interpret i ON i.id = s.id " +
+                        "WHERE type = 2 " +
+                        "");//GROUP BY i.id, i.name
+
+                System.out.println(query.toString());
+
+                ResultSet result = statement.executeQuery(query.toString());
+
+                while (result.next()) {
+                    resInterpret.add(new Interpret(result.getString(2), result.getInt(1)));
+
+
+                    System.out.printf("%20s|%20s|%20s\r\n", result.getString(2), result.getString(3), result.getString(4));
+                }
+            }
+
+            if (album) {
+                stmtSearchAlbumFast.setString(1, "%" + search + "%");
+                ResultSet result = stmtSearchAlbumFast.executeQuery();
+
+                while (result.next()) {
+                    resAlbum.add(new Album(result.getString(2), new Interpret(result.getString(4), result.getInt(3)), result.getInt(1)));
+                }
+            }
+
+            if (title) {
+                stmtSearchTitleFast.setString(1, "%" + search + "%");
+
+                ResultSet result = stmtSearchTitleFast.executeQuery();
+
+                while (result.next()) {
+                    Interpret i = new Interpret(result.getString(5), result.getInt(6));
+                    Album a = new Album(result.getString(3), i, result.getInt(4));
+                    Title t = new Title(result.getString(1), a, result.getInt(2));
+                    resTitle.add(t);
+                }
+            }
+        } catch (SQLException e) {
+            e.printStackTrace();
+        }
+
+    }
+
     private void initDatabase() throws SQLException {
 
         statement.executeUpdate("CREATE TABLE interpret (" +
@@ -170,14 +293,28 @@ public class Database {
 
         try {
 
-            int insertID = statement.executeUpdate("INSERT INTO interpret (name) VALUES ('" + interpret + "');");
-            statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + interpret + "', 2, "+insertID+")");
+            stmtInterpretAdd.setString(1, interpret);
+            stmtInterpretAdd.executeUpdate();
+
+            ResultSet res = stmtAlbumAdd.getGeneratedKeys();
+            res.next();
+            int insertID = res.getInt(1);
+
+            stmtSearchAdd.setString(1, interpret.toLowerCase());
+            stmtSearchAdd.setInt(2, 2);
+            stmtSearchAdd.setInt(3, insertID);
+            stmtSearchAdd.executeUpdate();
 
             List<String> keys = Phonetik.makeSearchKeys(interpret);
 
             for (String key: keys) {
-                statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + key + "', 2, "+insertID+")");
+                stmtSearchAdd.setString(1, key);
+                stmtSearchAdd.setInt(2, 2);
+                stmtSearchAdd.setInt(3, insertID);
+                stmtSearchAdd.executeUpdate();
             }
+
+            connection.commit();
 
             return Optional.of(new Interpret(interpret, insertID));
 
@@ -195,18 +332,74 @@ public class Database {
 
         try {
 
-            int insertID = statement.executeUpdate("INSERT INTO album (name, interpret) VALUES ('" + album + "', " + interpret.id + ");");
-            statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + album + "', 1, "+insertID+")");
+            stmtAlbumAdd.setString(1, album);
+            stmtAlbumAdd.setInt(2, interpret.id);
+            stmtAlbumAdd.executeUpdate();
+
+            ResultSet res = stmtAlbumAdd.getGeneratedKeys();
+            res.next();
+            int insertID = res.getInt(1);
+
+            stmtSearchAdd.setString(1, album.toLowerCase());
+            stmtSearchAdd.setInt(2, 1);
+            stmtSearchAdd.setInt(3, insertID);
+            stmtSearchAdd.executeUpdate();
 
             List<String> keys = Phonetik.makeSearchKeys(album);
 
             for (String key: keys) {
-                statement.executeUpdate("INSERT INTO search (codes, type, id) VALUES ('" + key + "', 1, "+insertID+")");
+                stmtSearchAdd.setString(1, key);
+                stmtSearchAdd.setInt(2, 1);
+                stmtSearchAdd.setInt(3, insertID);
+                stmtSearchAdd.executeUpdate();
             }
+
+            connection.commit();
 
             return Optional.of(new Album(album, interpret, insertID));
 
         } catch (SQLException e) {
+            e.printStackTrace();
+            return Optional.empty();
+        }
+    }
+
+    public Optional<Title> addTitle(String title, Album album) {
+
+        if (album.id == -1) {
+            //TODO retrieve or add interpret if not known
+        }
+
+        try {
+
+            stmtTitleAdd.setString(1, title);
+            stmtTitleAdd.setInt(2, album.id);
+            stmtTitleAdd.executeUpdate();
+
+            ResultSet res = stmtAlbumAdd.getGeneratedKeys();
+            res.next();
+            int insertID = res.getInt(1);
+
+            stmtSearchAdd.setString(1, title.toLowerCase());
+            stmtSearchAdd.setInt(2, 0);
+            stmtSearchAdd.setInt(3, insertID);
+            stmtSearchAdd.executeUpdate();
+
+            List<String> keys = Phonetik.makeSearchKeys(title);
+
+            for (String key: keys) {
+                stmtSearchAdd.setString(1, key);
+                stmtSearchAdd.setInt(2, 0);
+                stmtSearchAdd.setInt(3, insertID);
+                stmtSearchAdd.executeUpdate();
+            }
+
+            connection.commit();
+
+            return Optional.of(new Title(title, album, insertID));
+
+        } catch (SQLException e) {
+            e.printStackTrace();
             return Optional.empty();
         }
     }
@@ -215,6 +408,8 @@ public class Database {
 
         try {
 
+            System.out.println("######################## DATABASE START ########################");
+
             ResultSet result = statement.executeQuery("SELECT id, name FROM interpret");
             out.println("interpret:");
             out.println("----id----|---name---");
@@ -222,6 +417,35 @@ public class Database {
                 out.printf("%10d|%10s\r\n", result.getInt(1), result.getString(2));
             }
             out.println();
+
+
+            result = statement.executeQuery("SELECT a.id, a.name, a.interpret, i.name FROM album a INNER JOIN interpret i ON a.interpret = i.id ");
+            out.println("album:");
+            out.println("----id----|-----name-----|---iid----|interpret");
+            while (result.next()) {
+                out.printf("%10d|%14s|%10d|%10s\r\n", result.getInt(1), result.getString(2), result.getInt(3), result.getString(4));
+            }
+            out.println();
+
+
+            result = statement.executeQuery("SELECT t.id, t.name, t.album, a.name, i.name FROM title t INNER JOIN album a ON t.album = a.id INNER JOIN interpret i ON a.interpret = i.id");
+            out.println("album:");
+            out.println("----id----|-----name-----|---aid----|--interpret--|--album-");
+            while (result.next()) {
+                out.printf("%10d|%14s|%10d|%14s|%10s\r\n", result.getInt(1), result.getString(2), result.getInt(3), result.getString(4), result.getString(5));
+            }
+            out.println();
+
+
+            result = statement.executeQuery("SELECT id, codes, type FROM search ORDER BY type");
+            out.println("album:");
+            out.println("----id----|----codes---|---type---");
+            while (result.next()) {
+                out.printf("%10d|%12s|%10d\r\n", result.getInt(1), result.getString(2), result.getInt(3));
+            }
+            out.println();
+
+            System.out.println("######################## DATABASE END ########################");
 
         } catch (SQLException e) {
             e.printStackTrace(out);
